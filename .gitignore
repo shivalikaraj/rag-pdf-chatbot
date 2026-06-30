@@ -1,0 +1,19 @@
+# Environment variables / secrets
+.env
+
+# Vector DB (local data, shouldn't be versioned)
+chroma_db/
+
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+rag/__pycache__/
+*.pyc
+*.pyo
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/

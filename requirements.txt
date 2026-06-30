@@ -1,0 +1,6 @@
+streamlit
+pdfplumber
+chromadb
+sentence-transformers
+numpy
+google-genai
