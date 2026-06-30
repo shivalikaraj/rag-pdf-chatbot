@@ -5,7 +5,7 @@
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-vector%20store-6E56CF)
 ![Gemini](https://img.shields.io/badge/LLM-Gemini%202.5%20Flash%20Lite-4285F4?logo=googlegemini&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://your-app-url.streamlit.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://rag-pdf-chatbot-mcjrxqwuetsztrgdytqocr.streamlit.app/)
 
 A simple RAG (Retrieval-Augmented Generation) chatbot that answers questions based on your uploaded PDF documents. Built with Streamlit, ChromaDB, and Google Gemini.
 
