@@ -133,7 +133,7 @@ def semantic_chunk(text, threshold=0.2, max_words=300):
 # EMBEDDINGS
 
 def create_embeddings(texts):
-    return get_embedding_model.encode(texts).tolist()
+    return get_embedding_model().encode(texts).tolist()
 
 
 # VECTOR DB (Chroma)
