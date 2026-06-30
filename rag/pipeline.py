@@ -142,6 +142,15 @@ def get_chroma_collection():
     return get_chroma_client().get_or_create_collection(name=COLLECTION_NAME)
 
 
+@st.cache_resource
+def get_fresh_collection():
+    collection = get_chroma_collection()
+    existing_ids = collection.get()["ids"]
+    if existing_ids:
+        collection.delete(ids=existing_ids)
+    return collection
+
+
 def document_exists(collection, file_hash):
     results = collection.get(
         where={

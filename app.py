@@ -6,6 +6,7 @@ from rag.pipeline import (
     stream_gemini,
     get_indexed_document_count,
     get_available_documents,
+    get_fresh_collection
 )
 
 
@@ -17,6 +18,10 @@ st.set_page_config(
     layout="wide",
 )
 
+
+# ---------------- FRESH START ----------------
+# Wipe any leftover indexed documents from a previous app run/session.
+get_fresh_collection()
 
 # ---------------- HEADER ----------------
 
