@@ -142,25 +142,19 @@ def get_chroma_collection():
     return get_chroma_client().get_or_create_collection(name=COLLECTION_NAME)
 
 
-@st.cache_resource
-def get_fresh_collection():
-    collection = get_chroma_collection()
-    existing_ids = collection.get()["ids"]
-    if existing_ids:
-        collection.delete(ids=existing_ids)
-    return collection
-
-
-def document_exists(collection, file_hash):
+def document_exists(collection, file_hash, session_id):
     results = collection.get(
         where={
-            "file_hash": file_hash,
+            "$and": [
+                {"file_hash": file_hash, },
+                {"session_id": session_id},
+            ]
         }
     )
     return len(results["ids"]) > 0
 
 
-def index_document(collection, chunks, filename, file_hash):
+def index_document(collection, chunks, filename, file_hash, session_id):
 
     documents = [
         chunk["text"]
@@ -177,7 +171,8 @@ def index_document(collection, chunks, filename, file_hash):
             "source": filename,
             "file_hash": file_hash,
             "chunk_id": i,
-            "page": chunk["page"]
+            "page": chunk["page"],
+            "session_id": session_id,
         }
         for i, chunk in enumerate(chunks)
     ]
@@ -191,8 +186,11 @@ def index_document(collection, chunks, filename, file_hash):
     return collection
 
 
-def get_indexed_document_count(collection):
-    data = collection.get(include=["metadatas"])
+def get_indexed_document_count(collection, session_id):
+    data = collection.get(
+        where={"session_id": session_id},
+        include=["metadatas"]
+    )
     metadatas = data["metadatas"]
 
     unique_docs = {
@@ -202,8 +200,11 @@ def get_indexed_document_count(collection):
     return len(unique_docs)
 
 
-def get_available_documents(collection):
-    data = collection.get(include=["metadatas"])
+def get_available_documents(collection, session_id):
+    data = collection.get(
+        where={"session_id": session_id},
+        include=["metadatas"]
+    )
     metadatas = data["metadatas"]
     sources = {
         meta.get("source")
@@ -215,21 +216,23 @@ def get_available_documents(collection):
 
 # RETRIEVAL
 
-def retrieve_chunks(collection, query, k, source_filter=None):
+def retrieve_chunks(collection, query, k, session_id, source_filter=None):
     query_embedding = create_embeddings([query])[0]
 
+    where_clause = {"session_id": session_id}
+    if source_filter and source_filter != "All Documents":
+        where_clause = {
+            "$and": [
+                {"session_id": session_id},
+                {"source": source_filter},
+            ]
+        }
     query_params = {
         "query_embeddings": [query_embedding],
         "n_results": k,
-        "include": [
-            "documents",
-            "distances",
-            "metadatas",
-        ]
+        "include": ["documents", "distances", "metadatas",],
+        "where": where_clause,
     }
-
-    if source_filter and source_filter != "All Documents":
-        query_params["where"] = {"source": source_filter}
 
     results = collection.query(**query_params)
     documents = results["documents"][0]
@@ -311,23 +314,25 @@ def stream_gemini(prompt: str):
 
 # PUBLIC PIPELINE API (used by app.py)
 
-def build_index(file):
+def build_index(file, session_id):
     pages = load_pdf(file)
     chunks = chunk_pages(pages)
     collection = get_chroma_collection()
     file_hash = generate_file_hash(file)
 
-    if document_exists(collection, file_hash):
-        print(f"{file.name} already indexed")
+    if document_exists(collection, file_hash, session_id):
+        print(
+            f"[pipeline] '{file.name}' already indexed for this session - skipping.")
         return collection, []
 
-    collection = index_document(collection, chunks, file.name, file_hash)
+    collection = index_document(
+        collection, chunks, file.name, file_hash, session_id)
     return collection, chunks
 
 
-def query_rag(collection, question, source_filter=None):
+def query_rag(collection, question, session_id, source_filter=None):
     retrieved_chunks = retrieve_chunks(
-        collection, question, k=RETRIEVAL_K, source_filter=source_filter
+        collection, question, k=RETRIEVAL_K, session_id=session_id, source_filter=source_filter
     )
 
     reranked_chunks = rerank_chunks(question, retrieved_chunks)
@@ -341,7 +346,7 @@ def query_rag(collection, question, source_filter=None):
     return prompt, top_chunks
 
 
-def reset_collection(collection):
-    existing_ids = collection.get()["ids"]
+def reset_collection(collection, session_id):
+    existing_ids = collection.get(where={"session_id": session_id})["ids"]
     if existing_ids:
         collection.delete(ids=existing_ids)

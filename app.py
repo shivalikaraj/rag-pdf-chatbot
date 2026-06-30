@@ -1,3 +1,5 @@
+import uuid
+
 import streamlit as st
 from rag.pipeline import (
     build_index,
@@ -6,7 +8,6 @@ from rag.pipeline import (
     stream_gemini,
     get_indexed_document_count,
     get_available_documents,
-    get_fresh_collection
 )
 
 
@@ -18,10 +19,6 @@ st.set_page_config(
     layout="wide",
 )
 
-
-# ---------------- FRESH START ----------------
-# Wipe any leftover indexed documents from a previous app run/session.
-get_fresh_collection()
 
 # ---------------- HEADER ----------------
 
@@ -43,6 +40,9 @@ if "last_chunks" not in st.session_state:
 if "selected_doc" not in st.session_state:
     st.session_state.selected_doc = "All Documents"
 
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
 
 # ---------------- SIDEBAR ----------------
 
@@ -57,9 +57,8 @@ with st.sidebar:
 
     if uploaded_files:
         st.caption("Uploaded files:")
-
         for file in uploaded_files:
-            st.write(f"{file.name}")
+            st.write(file.name)
 
     # -------- Process --------
     if st.button("Process Document"):
@@ -70,7 +69,8 @@ with st.sidebar:
 
                 with st.spinner("Processing PDF and building index..."):
                     for file in uploaded_files:
-                        collection, _ = build_index(file)
+                        collection, _ = build_index(
+                            file, st.session_state.session_id)
 
                 st.session_state.collection = collection
                 st.success(
@@ -84,7 +84,8 @@ with st.sidebar:
     if st.button("Reset DB"):
         try:
             if st.session_state.collection is not None:
-                reset_collection(st.session_state.collection)
+                reset_collection(st.session_state.collection,
+                                 st.session_state.session_id)
 
             st.session_state.collection = None
             st.session_state.messages = []
@@ -98,11 +99,12 @@ with st.sidebar:
 
     # ---------------- Collection Info ----------------
     if st.session_state.collection is not None:
-        total_docs = get_indexed_document_count(st.session_state.collection)
+        total_docs = get_indexed_document_count(
+            st.session_state.collection, st.session_state.session_id)
         st.info(f"Indexed documents: {total_docs}")
 
         available_documents = get_available_documents(
-            st.session_state.collection)
+            st.session_state.collection, st.session_state.session_id)
         selected_doc = st.selectbox(
             "Search Scope",
             available_documents,
@@ -158,6 +160,7 @@ if prompt:
             full_prompt, chunks = query_rag(
                 st.session_state.collection,
                 prompt,
+                session_id=st.session_state.session_id,
                 source_filter=st.session_state.selected_doc
             )
         st.session_state.last_chunks = chunks
